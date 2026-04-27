@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cat Eye Cursor Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .cat-ear {
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        background-color: #fbbf24; /* amber-400 */
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      }
+      .cat-ear.left {
+        top: -50px;
+        left: 10px;
+      }
+      .cat-ear.right {
+        top: -50px;
+        right: 10px;
+      }
+      .nose {
+        position: absolute;
+        left: 50%;
+        top: 165px;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 12px solid #f97316; /* orange-500 */
+      }
+      .mouth {
+        position: absolute;
+        left: 50%;
+        top: 183px;
+        transform: translateX(-50%);
+        width: 36px;
+        height: 14px;
+        border-left: 3px solid #92400e;
+        border-right: 3px solid #92400e;
+        border-bottom: 3px solid #92400e;
+        border-top: none;
+        border-radius: 0 0 50% 50%;
+      }
+    </style>
+  </head>
+  <body class="bg-indigo-900 overflow-x-hidden">
+    <main class="flex items-center justify-center min-h-screen px-4">
+      <div
+        aria-label="Ilustrasi wajah kucing dengan mata yang mengikuti kursor"
+        class="cat-illustration max-w-full"
+      >
+        <!-- Cat face head -->
+        <div
+          class="cat-face relative rounded-full bg-amber-400"
+          style="width: 280px; height: 280px;"
+        >
+          <!-- Cat ears -->
+          <div class="cat-ears">
+            <div class="cat-ear left" aria-hidden="true"></div>
+            <div class="cat-ear right" aria-hidden="true"></div>
+          </div>
+          <!-- Eyes row -->
+          <div
+            class="eyes-row flex justify-center gap-6"
+            style="position: absolute; top: 90px; left: 0; right: 0;"
+          >
+            <div
+              class="eyeball left rounded-full bg-white"
+              style="position: relative; width: 60px; height: 60px;"
+              aria-hidden="true"
+            >
+              <div
+                class="pupil rounded-full bg-black"
+                style="position: absolute; width: 24px; height: 24px; left: 50%; top: 50%; transform: translate(-50%, -50%);"
+              ></div>
+            </div>
+            <div
+              class="eyeball right rounded-full bg-white"
+              style="position: relative; width: 60px; height: 60px;"
+              aria-hidden="true"
+            >
+              <div
+                class="pupil rounded-full bg-black"
+                style="position: absolute; width: 24px; height: 24px; left: 50%; top: 50%; transform: translate(-50%, -50%);"
+              ></div>
+            </div>
+          </div>
+          <!-- Nose -->
+          <div class="nose" aria-hidden="true"></div>
+          <!-- Mouth -->
+          <div class="mouth" aria-hidden="true"></div>
+        </div>
+      </div>
+    </main>
+    <script>
+      /**
+       * Memperbarui posisi pupil agar mengikuti kursor.
+       * @param {HTMLElement} eyeball - Elemen bola mata
+       * @param {HTMLElement} pupil   - Elemen pupil di dalam eyeball
+       * @param {number} cursorX     - Posisi kursor horizontal (event.clientX)
+       * @param {number} cursorY     - Posisi kursor vertikal (event.clientY)
+       */
+      function updatePupil(eyeball, pupil, cursorX, cursorY) {
+        // Dapatkan posisi dan ukuran eyeball relatif terhadap viewport
+        const rect = eyeball.getBoundingClientRect();
+
+        // Hitung pusat eyeball dalam koordinat viewport
+        const eyeCenterX = rect.left + rect.width / 2;
+        const eyeCenterY = rect.top + rect.height / 2;
+
+        // Math.atan2(y, x) mengembalikan sudut (radian) dari pusat eyeball
+        // ke posisi kursor, diukur dari sumbu X positif (arah kanan)
+        const angle = Math.atan2(cursorY - eyeCenterY, cursorX - eyeCenterX);
+
+        // maxRadius adalah jarak maksimum pusat pupil dari pusat eyeball,
+        // sehingga pupil tidak keluar dari batas eyeball
+        const maxRadius = (eyeball.offsetWidth / 2) - (pupil.offsetWidth / 2);
+
+        // Hitung posisi target pusat pupil dalam koordinat viewport
+        const pupilX = eyeCenterX + Math.cos(angle) * maxRadius;
+        const pupilY = eyeCenterY + Math.sin(angle) * maxRadius;
+
+        // Terapkan posisi sebagai koordinat absolut di dalam eyeball.
+        // Kurangi rect.left/rect.top untuk mengkonversi dari viewport ke ruang lokal eyeball,
+        // lalu kurangi setengah ukuran pupil agar pusat pupil tepat di titik target.
+        pupil.style.left = (pupilX - rect.left - pupil.offsetWidth / 2) + 'px';
+        pupil.style.top  = (pupilY - rect.top  - pupil.offsetHeight / 2) + 'px';
+
+        // Hapus transform bawaan (translate(-50%, -50%)) karena posisi kini
+        // dikendalikan sepenuhnya oleh left/top di atas
+        pupil.style.transform = 'none';
+      }
+
+      function initEyeTracker() {
+        const leftEyeball  = document.querySelector('.eyeball.left');
+        const rightEyeball = document.querySelector('.eyeball.right');
+        const leftPupil    = leftEyeball.querySelector('.pupil');
+        const rightPupil   = rightEyeball.querySelector('.pupil');
+
+        function onMouseMove(event) {
+          updatePupil(leftEyeball, leftPupil, event.clientX, event.clientY);
+          updatePupil(rightEyeball, rightPupil, event.clientX, event.clientY);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+      }
+
+      document.addEventListener('DOMContentLoaded', initEyeTracker);
+    </script>
+  </body>
+</html>
