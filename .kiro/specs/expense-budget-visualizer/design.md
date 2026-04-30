@@ -2,20 +2,35 @@
 
 ## Overview
 
-The Expense & Budget Visualizer is a fully client-side single-page application (SPA) built with plain HTML, CSS, and Vanilla JavaScript. It allows users to record expenses, set per-category budgets, visualize spending via canvas-rendered charts, and filter/summarize their data — all without a backend or external libraries.
+The Expense & Budget Visualizer (branded **Spendly**) is a fully client-side single-page application (SPA) built with plain HTML5, CSS3, and Vanilla JavaScript. It allows users to record expenses, set per-category budgets, visualize spending via canvas-rendered charts, and filter/summarize their data — all without a backend, build tools, npm, or external libraries.
 
 All state is persisted in the browser's `localStorage`. The entire application lives in three files:
 
 - `index.html` — structure and markup
-- `css/style.css` — all styling
-- `js/script.js` — all application logic
+- `css/style.css` — all styling (no CSS framework)
+- `js/script.js` — all application logic (no JS libraries)
 
-The UI is divided into four logical sections rendered on a single page:
+Google Fonts (Inter) is loaded via `<link>` in the `<head>`.
 
-1. **Add Expense / Set Budget** — input forms
-2. **Expense List** — filterable, deletable table of records
-3. **Spending Summary** — per-category totals vs. budgets
-4. **Charts** — bar chart and pie chart rendered on `<canvas>`
+The UI follows a **SaaS dashboard** visual design with a fixed dark sidebar, a sticky topbar, and a four-row main content area:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ SIDEBAR (220px, fixed, dark #0f172a)                            │
+│  Logo / nav links / Clear All Data (footer)                     │
+├─────────────────────────────────────────────────────────────────┤
+│ TOPBAR (56px, sticky, white)  "Dashboard"  [● Live]             │
+├─────────────────────────────────────────────────────────────────┤
+│ ROW 1  [KPI] [KPI] [KPI] [KPI]   — 4-column grid, full width   │
+├─────────────────────────────────────────────────────────────────┤
+│ ROW 2  [Add Expense]  [Set Budget]  — flex row, equal height    │
+├─────────────────────────────────────────────────────────────────┤
+│ ROW 3  [Bar Chart]  [Pie Chart]  — flex row, full width         │
+├─────────────────────────────────────────────────────────────────┤
+│ ROW 4  [Filter + Transactions]  │  [Budget Summary]             │
+│        (dashboard-col-main)     │  (dashboard-col-side 420px)   │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -24,14 +39,23 @@ The UI is divided into four logical sections rendered on a single page:
 The application follows a simple **Model → View → Controller** pattern implemented entirely in `script.js`, without any framework.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        index.html                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
-│  │Add Form  │  │Expense   │  │Summary   │  │Charts  │  │
-│  │Budget    │  │List      │  │Panel     │  │Canvas  │  │
-│  │Form      │  │+ Filters │  │          │  │        │  │
-│  └──────────┘  └──────────┘  └──────────┘  └────────┘  │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                          index.html                               │
+│  ┌─────────┐  ┌──────────────────────────────────────────────┐   │
+│  │ Sidebar │  │ Main Content                                  │   │
+│  │  (nav)  │  │  ┌──────────────────────────────────────┐    │   │
+│  │         │  │  │ Topbar (h1 + Live badge)              │    │   │
+│  │         │  │  ├──────────────────────────────────────┤    │   │
+│  │         │  │  │ ROW 1: KPI Cards (×4)                │    │   │
+│  │         │  │  ├──────────────────────────────────────┤    │   │
+│  │         │  │  │ ROW 2: Add Expense | Set Budget       │    │   │
+│  │         │  │  ├──────────────────────────────────────┤    │   │
+│  │         │  │  │ ROW 3: Bar Chart | Pie Chart          │    │   │
+│  │         │  │  ├──────────────────────────────────────┤    │   │
+│  │         │  │  │ ROW 4: Filter+Transactions | Summary  │    │   │
+│  │         │  │  └──────────────────────────────────────┘    │   │
+│  └─────────┘  └──────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
          │                │
          ▼                ▼
 ┌─────────────────────────────────────────────────────────┐
@@ -39,27 +63,28 @@ The application follows a simple **Model → View → Controller** pattern imple
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │  State (in-memory mirror of localStorage)        │   │
-│  │  { expenses: [...], budgets: {...} }              │   │
+│  │  { expenses: [...], budgets: {...}, filters:{} } │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Storage Module  (read/write localStorage)       │   │
+│  │  StorageModule  (read/write localStorage)        │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Validation Module  (form input checks)          │   │
+│  │  ValidationModule  (form input checks)           │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Filter Module  (date range + category filter)   │   │
+│  │  FilterModule  (date range + category filter)    │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Render Module  (DOM updates for list, summary)  │   │
+│  │  RenderModule  (DOM updates: KPIs, list,         │   │
+│  │                summary, validation, banner)      │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                          │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │  Chart Module  (canvas bar chart + pie chart)    │   │
+│  │  ChartModule  (canvas bar chart + pie chart)     │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
          │
@@ -75,20 +100,43 @@ The application follows a simple **Model → View → Controller** pattern imple
 
 1. On page load, the Storage Module reads `localStorage` and populates the in-memory state.
 2. User actions (add, delete, set budget, filter, clear) mutate the in-memory state and immediately persist it via the Storage Module.
-3. After every state mutation, the Render Module re-renders the expense list, summary panel, and both charts using the current (possibly filtered) state.
+3. After every state mutation, `RenderModule.refresh()` re-renders the KPI stat cards, expense list, summary panel, and both charts using the current (possibly filtered) state.
 
 ### Key Design Decisions
 
 - **Single source of truth**: The in-memory `state` object is always a mirror of `localStorage`. All reads go through state; all writes go through the Storage Module which updates both.
 - **Full re-render on change**: Rather than fine-grained DOM patching, every state change triggers a full re-render of affected sections. Given the scale of this app, this is simpler and fast enough.
-- **No IDs from the server**: Expenses are assigned a `id` using `Date.now() + Math.random()` at creation time, which is sufficient for a client-only app.
+- **No IDs from the server**: Expenses are assigned an `id` using `Date.now() + Math.random()` at creation time, which is sufficient for a client-only app.
 - **Canvas charts drawn from scratch**: On every relevant state change, the canvas context is cleared and charts are redrawn. This avoids stale state in chart objects.
+- **No external dependencies**: No npm, no build tools, no charting libraries. Charts are drawn entirely with the HTML Canvas 2D API.
+
+---
+
+## Semantic HTML Structure
+
+The page uses semantic HTML5 elements throughout:
+
+- `<aside class="sidebar">` — fixed dark sidebar with logo, nav, and footer
+- `<main class="main-content">` — offset by sidebar width, contains topbar and page body
+- `<header class="topbar">` — sticky topbar with `<h1>` title and Live badge
+- `<nav class="sidebar-nav">` with `<ul role="list">` — sidebar navigation
+- `<section aria-labelledby>` wrapping `<article class="card">` — each dashboard panel
+- `<figure>` + `<figcaption class="sr-only">` — wraps each canvas chart
+- `<h1>` in topbar; `<h2>` for card titles and chart titles; `<h2 class="sr-only">` for KPI section and charts-row headings
+- `<footer class="sidebar-footer">` — sidebar footer containing the Clear All Data button
+- All decorative SVGs: `aria-hidden="true" focusable="false"`
+- Error spans: `role="alert" aria-live="polite"` + `aria-describedby` on inputs
+- `#expense-list`: `aria-live="polite" aria-relevant="additions removals"`
+- `#summary`: `aria-live="polite" aria-relevant="all"`
+- `#expense-count-badge`: `aria-live="polite" aria-atomic="true"`
+- `#warning-banner`: `role="alert" aria-live="polite"`
+- Filter controls wrapper: `role="search" aria-label="Filter expenses"`
 
 ---
 
 ## Components and Interfaces
 
-All components are plain JavaScript functions/objects within `script.js`. There are no classes required, but logical grouping via object literals or module-pattern IIFEs is used for clarity.
+All components are plain JavaScript functions/objects within `script.js`. Logical grouping is via object literals.
 
 ### 1. State Object
 
@@ -100,85 +148,100 @@ const state = {
     startDate: null,   // string | null  (YYYY-MM-DD)
     endDate: null,     // string | null
     category: null,    // string | null
-  }
+  },
 };
 ```
 
 ### 2. Storage Module
 
 ```js
-StorageModule = {
-  load()          // → void  — reads localStorage, populates state
-  save()          // → void  — serializes state.expenses + state.budgets to localStorage
-  clear()         // → void  — removes both keys from localStorage
+const StorageModule = {
+  save()   // → void  — serializes state.expenses + state.budgets to localStorage
+  load()   // → void  — reads localStorage, populates state; falls back to empty state + warning banner on error
+  clear()  // → void  — removes both keys from localStorage, resets state.expenses and state.budgets
 }
 ```
 
 - Keys: `"ebv_expenses"` and `"ebv_budgets"`
-- On parse error or unavailability, initializes with empty arrays/objects and shows a warning banner.
+- On `SecurityError` (storage blocked) or `SyntaxError` (corrupted JSON), initializes with empty arrays/objects and calls `RenderModule.showWarningBanner()`.
 
 ### 3. Validation Module
 
 ```js
-ValidationModule = {
-  validateExpense(formData)  // → { valid: boolean, errors: { field: string } }
-  validateBudget(formData)   // → { valid: boolean, errors: { field: string } }
+const ValidationModule = {
+  validateExpense(formData)  // → { valid: boolean, errors: { [field: string]: string } }
+  validateBudget(formData)   // → { valid: boolean, errors: { [field: string]: string } }
 }
 ```
 
-- Expense rules: `amount > 0`, `category` not empty, `date` not empty, `description` optional.
+- Expense rules: `amount > 0`, `category` not empty, `date` not empty. `description` is optional.
 - Budget rules: `amount > 0`, `category` not empty.
 - Returns an errors map keyed by field name so the Render Module can display inline messages.
 
 ### 4. Filter Module
 
 ```js
-FilterModule = {
-  apply(expenses, filters)  // → Array<Expense>  — returns filtered subset
+const FilterModule = {
+  apply(expenses, filters)  // → Array<Expense>  — returns filtered subset without mutating input
   clear()                   // → void  — resets state.filters to all-null
 }
 ```
 
 - Filtering is non-destructive: the original `state.expenses` array is never modified.
 - `apply()` chains: date-range filter → category filter.
+- ISO date strings (`YYYY-MM-DD`) compare correctly lexicographically.
 
 ### 5. Render Module
 
 ```js
-RenderModule = {
-  renderExpenseList(expenses)   // → void  — updates #expense-list DOM
-  renderSummary(expenses, budgets)  // → void  — updates #summary DOM
-  renderValidationErrors(errors, formId)  // → void  — shows inline errors
-  clearValidationErrors(formId)  // → void
-  showWarningBanner(message)    // → void
-  refresh()                     // → void  — calls all render functions with current filtered state
+const RenderModule = {
+  _formatCurrency(amount)                        // → string  — formats as USD, e.g. "$42.50"
+  renderExpenseList(expenses)                    // → void  — updates #expense-list DOM
+  renderSummary(expenses, budgets)               // → void  — updates #summary DOM
+  renderValidationErrors(errors, formId)         // → void  — shows inline errors
+  clearValidationErrors(formId)                  // → void  — clears all .error-msg spans in form
+  showWarningBanner(message)                     // → void  — makes #warning-banner visible
+  renderStatCards(expenses, budgets)             // → void  — updates 4 KPI stat card values
+  refresh()                                      // → void  — calls all render functions with current filtered state
 }
 ```
 
 - `refresh()` is the single entry point called after every state mutation.
 - It computes the filtered expense list once and passes it to all sub-renderers and the Chart Module.
+- `renderStatCards()` updates: `#stat-total` (total spending), `#stat-count` (transaction count sub-label), `#stat-budgets` (number of budgets set), `#stat-over` (over-budget category count). Note: `#stat-categories` is present in the HTML but is not currently updated by `renderStatCards`.
 
 ### 6. Chart Module
 
 ```js
-ChartModule = {
-  drawBarChart(canvas, expenses, budgets)  // → void
-  drawPieChart(canvas, expenses)           // → void
+const ChartModule = {
+  _PALETTE: string[]                                          // 10-color fixed palette
+  _colorFor(index)                                            // → string  — cycles through _PALETTE
+  _aggregateByCategory(expenses)                              // → { [category]: number }
+  drawBarChart(canvas, expenses, budgets)                     // → void
+  drawPieChart(canvas, expenses)                              // → void
 }
 ```
 
-- Both functions accept a `<canvas>` element and data; they clear and redraw from scratch.
-- Bar chart: one bar per category showing spending; a horizontal reference line per category showing budget (if set).
-- Pie chart: one slice per category, proportional to total spending. Categories with zero spending are omitted.
-- Colors are assigned from a fixed palette array, cycling if there are more categories than colors.
+- Both draw functions accept a `<canvas>` element and data; they clear and redraw from scratch.
+- Bar chart (`id="bar-chart"`, `width=520`, `height=240`): one bar per spending category; a dashed red horizontal reference line per category with a budget set; y-axis gridlines and labels; x-axis category labels (truncated at 10 chars).
+- Pie chart (`id="pie-chart"`, `width=520`, `height=240`): one arc per category with non-zero spending, proportional to total; a legend below the pie showing color swatch + category name.
+- Palette: `['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16']` (indigo, amber, emerald, blue, pink, violet, teal, orange, cyan, lime).
+- Both render "No data" centered text when the expenses array is empty.
 
 ### 7. Event Handlers (wired in `init()`)
 
 ```js
-init()  // → void  — attaches all event listeners, calls StorageModule.load(), RenderModule.refresh()
+handleExpenseFormSubmit(event)   // add-expense form submit
+handleExpenseListClick(event)    // delegated click on #expense-list (delete button)
+handleBudgetFormSubmit(event)    // set-budget form submit
+handleFilterChange()             // change on any filter field
+handleClearFilters()             // click on #clear-filters-btn
+handleClearAll()                 // click on #clear-all-btn (with window.confirm)
+
+function init()  // → void  — populates selects, attaches listeners, loads storage, renders
 ```
 
-Event handlers are attached once on `DOMContentLoaded`. They call the appropriate module functions and then call `RenderModule.refresh()`.
+`init()` is wired to `DOMContentLoaded`.
 
 ---
 
@@ -190,7 +253,7 @@ Event handlers are attached once on `DOMContentLoaded`. They call the appropriat
 {
   id: string,           // unique identifier: `${Date.now()}-${Math.random()}`
   amount: number,       // positive float, e.g. 42.50
-  category: string,     // e.g. "Food", "Transport", "Entertainment"
+  category: string,     // one of the CATEGORIES values
   description: string,  // free text, may be empty string
   date: string          // ISO date string "YYYY-MM-DD"
 }
@@ -229,16 +292,116 @@ This makes lookups O(1) and overwrites natural (no need to search for existing e
 
 ### Predefined Categories
 
-The category dropdown is populated from a fixed list defined in `script.js`:
+The category dropdowns are populated from a fixed constant defined in `script.js`:
 
 ```js
 const CATEGORIES = [
-  "Food", "Transport", "Entertainment",
-  "Health", "Housing", "Shopping", "Other"
+  'Food', 'Transport', 'Entertainment',
+  'Health', 'Housing', 'Shopping', 'Other'
 ];
 ```
 
-This list is used to populate both the expense form and the budget form dropdowns.
+This list populates the expense form select, the budget form select, and the filter category select.
+
+---
+
+## CSS Architecture
+
+All styles live in `css/style.css`. No CSS framework is used.
+
+### Design Tokens (CSS Custom Properties)
+
+```css
+--brand, --brand-dark, --brand-light, --brand-mid
+--gray-0 through --gray-900
+--green, --green-bg, --green-dark
+--red, --red-bg, --red-dark
+--blue, --blue-bg, --blue-dark
+--amber, --amber-bg
+--sidebar-w: 220px
+--topbar-h: 56px
+--r-sm, --r-md, --r-lg          /* border radii */
+--shadow-xs, --shadow-sm, --shadow-md
+--glow                           /* focus ring */
+```
+
+### Utility Classes
+
+- `.sr-only` — visually hidden, accessible to screen readers
+
+### App Shell
+
+- `.app-shell` — flex container for sidebar + main
+- `.sidebar` — fixed, 220px, dark (`#0f172a`)
+- `.sidebar-logo`, `.sidebar-logo-icon`, `.sidebar-logo-text`, `.sidebar-logo-sub`
+- `.sidebar-nav`, `.sidebar-nav-list`, `.sidebar-section-label`, `.sidebar-link`, `.sidebar-link.active`
+- `.sidebar-footer`, `.sidebar-danger-btn`
+- `.main-content` — `margin-left: var(--sidebar-w)`, flex column
+- `.topbar` — sticky, 56px, white, flex row
+- `.topbar-title`, `.topbar-subtitle`, `.topbar-badge`, `.badge-dot`
+- `.page-body` — flex column, gap, padding
+
+### KPI Cards
+
+- `.kpi-row` — 4-column grid
+- `.kpi-card` — white card with hover lift
+- `.kpi-purple`, `.kpi-green`, `.kpi-red`, `.kpi-blue` — accent color variants
+- `.kpi-icon`, `.kpi-body`, `.kpi-label`, `.kpi-value`, `.kpi-sub`
+
+### Forms Row
+
+- `.forms-row` — flex row, equal height
+- `.forms-row-item` — flex: 1
+- `.card-stretch`, `.card-body-stretch`, `.form-stretch` — height fill helpers
+- `.form-spacer` — flexible spacer to push Set Budget button to bottom
+- `.form-row-2` — 2-column grid for form fields
+- `.field-group`, `.label-opt`
+- `.error-msg` — inline validation error (prepends ⚠ when non-empty)
+
+### Charts Row
+
+- `.charts-row` — flex row
+- `.charts-row-item` — flex: 1
+- `.chart-body` — centered flex container for `<figure>`
+
+### Dashboard Grid (Row 4)
+
+- `.dashboard-grid` — `grid-template-columns: 1fr 420px`
+- `.dashboard-col-main`, `.dashboard-col-side`
+
+### Cards
+
+- `.card`, `.card-header`, `.card-body`, `.card-title`, `.card-badge`, `.card-tag`
+
+### Filter Bar
+
+- `.filter-inline` — flex row, inline in card-header
+- `.filter-field` — label + input/select column
+
+### Tables
+
+- `.expense-table`, `.amount-cell`, `.category-pill`
+- `.summary-table`, `.budget-progress-wrap`, `.budget-progress-bar`, `.budget-progress-fill`, `.budget-progress-fill.over`, `.budget-progress-pct`
+- `.over-budget-badge`
+- `tr.over-budget` — red text on over-budget summary rows
+
+### Empty States
+
+- `.empty-state`, `.empty-state-icon`, `.empty-state-title`, `.empty-state-sub`
+
+### Buttons
+
+- `.btn`, `.btn-primary`, `.btn-ghost`, `.btn-sm`, `.btn-full`, `.btn-delete`
+
+### Responsive Breakpoints
+
+| Breakpoint | Changes |
+|---|---|
+| `≤ 1280px` | Dashboard grid side column narrows to 360px |
+| `≤ 1100px` | KPI row → 2 columns; charts stack; dashboard grid → 1 column |
+| `≤ 900px` | Sidebar hidden (`--sidebar-w: 0px`); main-content margin reset |
+| `≤ 640px` | KPI row → 2 columns; forms stack; charts stack; form-row-2 → 1 column; filter stacks |
+| `≤ 400px` | KPI row → 1 column |
 
 ---
 
@@ -281,7 +444,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 5: Every rendered expense entry is complete and has a delete control
 
-*For any* expense in the expense list, the rendered DOM entry SHALL display the expense's amount, category, description, and date, AND SHALL contain a delete control element.
+*For any* expense in the expense list, the rendered DOM entry SHALL display the expense's amount, category, description, and date, AND SHALL contain a delete control element (`.btn-delete` with `data-id`).
 
 **Validates: Requirements 2.3, 3.1**
 
@@ -313,7 +476,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 9: Bar chart renders a bar for every spending category
 
-*For any* set of expenses spanning one or more categories, calling `drawBarChart` SHALL produce canvas draw calls for each category that has spending, and for categories with a budget set SHALL include a budget reference line, while categories with no budget set SHALL have no budget reference line.
+*For any* set of expenses spanning one or more categories, calling `ChartModule.drawBarChart` SHALL produce canvas draw calls for each category that has spending, and for categories with a budget set SHALL include a dashed red budget reference line, while categories with no budget set SHALL have no budget reference line.
 
 **Validates: Requirements 5.1, 5.4**
 
@@ -321,7 +484,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 10: Pie chart renders a slice for every spending category
 
-*For any* set of expenses spanning one or more categories, calling `drawPieChart` SHALL produce one arc draw call per category that has non-zero spending, with arc sizes proportional to each category's share of total spending.
+*For any* set of expenses spanning one or more categories, calling `ChartModule.drawPieChart` SHALL produce one arc draw call per category that has non-zero spending, with arc sizes proportional to each category's share of total spending, and SHALL render a legend below the pie.
 
 **Validates: Requirements 5.2**
 
@@ -329,7 +492,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 11: Summary displays spending and budget for each category
 
-*For any* combination of expenses and budgets, the rendered summary SHALL contain one row per category that has either spending or a budget, showing the total spending amount and (if a budget exists) the budget limit for that category.
+*For any* combination of expenses and budgets, the rendered summary SHALL contain one row per category that has either spending or a budget, showing the total spending amount and (if a budget exists) the budget limit and a progress bar for that category.
 
 **Validates: Requirements 6.1**
 
@@ -337,7 +500,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 12: Over-budget categories are visually distinguished in summary
 
-*For any* category where the sum of expense amounts exceeds the category's budget, the rendered summary row for that category SHALL carry a visual over-budget indicator (e.g., a CSS class or inline style) that is absent from rows where spending does not exceed the budget.
+*For any* category where the sum of expense amounts exceeds the category's budget, the rendered summary row for that category SHALL carry the CSS class `over-budget` (red text) and an `.over-budget-badge` element, both of which SHALL be absent from rows where spending does not exceed the budget.
 
 **Validates: Requirements 6.2**
 
@@ -345,7 +508,7 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Property 13: Categories without a budget show spending only
 
-*For any* category that has expenses but no budget set, the rendered summary row SHALL display the total spending amount and SHALL NOT display a budget value or over-budget indicator for that category.
+*For any* category that has expenses but no budget set, the rendered summary row SHALL display the total spending amount and SHALL NOT display a budget value, progress bar, or over-budget indicator for that category.
 
 **Validates: Requirements 6.3**
 
@@ -403,22 +566,24 @@ This list is used to populate both the expense form and the budget form dropdown
 
 ### Validation Errors
 
-- Inline error messages are rendered adjacent to the offending field using a dedicated error `<span>` element per field.
-- Errors are cleared on the next successful submission or when the user modifies the field.
+- Inline error messages are rendered in a dedicated `<span class="error-msg">` element per field (id format: `${formId}-${field}-error`).
+- Error spans use `role="alert" aria-live="polite"` and inputs use `aria-describedby` pointing to their error span.
+- The `.error-msg` CSS rule prepends a ⚠ character when the span is non-empty.
+- Errors are cleared on the next successful submission via `clearValidationErrors()`, which clears all `.error-msg` spans within the form.
 - The form is not submitted (no state mutation, no localStorage write) when validation fails.
 
 ### localStorage Errors
 
 - `StorageModule.load()` wraps all `localStorage` access in a `try/catch`.
 - On `SecurityError` (storage blocked) or `SyntaxError` (corrupted JSON), the module initializes `state.expenses = []` and `state.budgets = {}`.
-- A non-blocking warning banner is shown at the top of the page (e.g., "Could not load saved data. Starting fresh.").
+- `RenderModule.showWarningBanner()` is called with "Could not load saved data. Starting fresh." — the `#warning-banner` element (amber background, `role="alert"`) becomes visible.
 - The banner does not block interaction; the user can still use the app for the current session.
 
 ### Empty States
 
-- When `state.expenses` is empty (or the filtered result is empty), the expense list section renders a placeholder message: "No expenses recorded yet."
-- When no budgets are set, the summary section renders a placeholder: "No budgets set."
-- Charts with no data render an empty canvas with a centered "No data" text label.
+- When the filtered expense list is empty, `#expense-list` renders a `.empty-state` block: icon + "No expenses yet" + "Add your first expense using the form above."
+- When no categories have spending AND no budgets are set, `#summary` renders a `.empty-state` block: icon + "No data yet" + "Add expenses or set budgets to see your summary."
+- Charts with no data render an empty canvas with centered "No data" text in `#94a3b8`.
 
 ### Confirmation Dialog
 
@@ -448,23 +613,25 @@ This feature is a client-side Vanilla JavaScript application with pure data-tran
 - `FilterModule.apply`
 - The sorting logic used by `RenderModule.renderExpenseList`
 - `StorageModule.load` / `save` (with mocked `localStorage`)
-- Summary aggregation logic
-- Chart data preparation functions (not canvas draw calls directly)
+- Summary aggregation logic in `RenderModule.renderSummary`
+- `ChartModule._aggregateByCategory` and `ChartModule._colorFor`
 
 Each of the 19 correctness properties above maps to one property-based test.
 
 ### Unit Tests (Example-Based)
 
 Unit tests cover:
-- Structural checks (form fields exist, delete controls exist, filter controls exist)
-- Edge cases: empty expense list message, empty category/date validation errors, localStorage parse error handling
+- Structural checks (form fields exist, delete controls exist, filter controls exist, KPI stat card elements exist)
+- Edge cases: empty expense list empty-state message, empty category/date validation errors, localStorage parse error handling
 - Specific interaction flows: add expense → form cleared, confirm clear-all → empty state, cancel clear-all → state unchanged
-- Chart rendering with zero-data inputs
+- Chart rendering with zero-data inputs (renders "No data" text)
+- `renderStatCards` updates `#stat-total`, `#stat-count`, `#stat-budgets`, `#stat-over`
 
 ### Integration / Smoke Tests
 
 - Verify `localStorage` keys are exactly `"ebv_expenses"` and `"ebv_budgets"` after a save
 - Verify no external script tags or imports reference charting libraries
+- Verify the sidebar nav links (`#kpi-row`, `#panel-add-expense`, `#panel-set-budget`, `#panel-charts`, `#panel-summary`, `#panel-expenses`) resolve to existing elements
 
 ### Test File Location
 
